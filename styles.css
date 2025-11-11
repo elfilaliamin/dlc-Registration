@@ -1,0 +1,462 @@
+:root {
+    --primary-color: #5a67d8;
+    --primary-hover-color: #4c51bf;
+    --danger-color: #e53e3e;
+    --danger-hover-color: #c53030;
+    --warning-color: #dd6b20;
+    --warning-background-color: #fffaf0;
+    --success-color: #38a169;
+    --background-color: #f7fafc;
+    --card-background-color: #ffffff;
+    --text-color: #2d3748;
+    --subtle-text-color: #718096;
+    --border-color: #e2e8f0;
+    --shadow-color: rgba(0, 0, 0, 0.05);
+    --font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    position: relative;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 2rem 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+.container {
+    background-color: var(--card-background-color);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 15px -3px var(--shadow-color), 0 4px 6px -2px var(--shadow-color);
+    width: 90%;
+    max-width: 800px;
+}
+
+h1 {
+    text-align: center;
+    color: var(--text-color);
+    margin: 0;
+}
+
+.header {
+    background: linear-gradient(90deg, var(--primary-color) 0%, #818cf8 100%);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+}
+
+.header h1 {
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.header-controls-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.search-container {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.search-icon {
+    position: absolute;
+    top: 50%;
+    left: 15px;
+    transform: translateY(-50%);
+    color: var(--subtle-text-color);
+}
+
+#search-input {
+    width: 100%;
+    padding: 12px 12px 12px 40px; /* Add left padding for the icon */
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: var(--subtle-text-color);
+    cursor: pointer;
+    padding: 5px;
+    transition: color 0.2s ease;
+}
+
+#sort-select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: #fff;
+    font-family: var(--font-family);
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+#sort-select option {
+    background-color: var(--card-background-color);
+    color: var(--text-color);
+}
+
+#product-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: var(--subtle-text-color);
+}
+
+input[type="text"],
+input[type="number"],
+input[type="date"] {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: var(--font-family);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.3);
+}
+
+button {
+    padding: 12px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    margin-top: 10px;
+}
+
+.date-inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    gap: 10px;
+}
+
+textarea#import-textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: var(--font-family);
+    resize: vertical;
+}
+
+textarea#import-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.3);
+}
+
+#expiry-year{
+    width: 100%;
+}
+
+.clear-btn {
+    background-color: var(--danger-color);
+    padding: 8px 16px;
+}
+
+.clear-btn:hover {
+    background-color: var(--danger-hover-color);
+}
+
+/* Product List Styles */
+#product-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.product-item {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-left: 5px solid var(--primary-color);
+    border-radius: 8px;
+    padding: 15px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 15px;
+    align-items: start;
+    box-shadow: 0 1px 3px 0 var(--shadow-color), 0 1px 2px 0 var(--shadow-color);
+    transition: box-shadow 0.2s ease;
+}
+
+.product-item.expiring-soon {
+    border-left-color: var(--warning-color);
+    background-color: var(--warning-background-color);
+}
+
+.product-item.expired {
+    border-left-color: var(--danger-color);
+    background-color: #fff5f5;
+    opacity: 0.9;
+}
+
+.product-item:hover {
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.08);
+}
+
+.product-item.expiring-soon .product-quantity,
+.product-item.expired .product-quantity {
+    font-weight: 600; /* Keep font weight but remove color to avoid clash with buttons */
+}
+
+.quantity-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 8px;
+}
+
+.quantity-btn {
+    background-color: #f0f0f0;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+}
+.quantity-btn:hover {
+    background-color: #e0e0e0;
+}
+
+.product-details p {
+    margin: 0 0 8px 0;
+}
+
+.product-details p strong {
+    color: var(--text-color);
+}
+
+.product-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    color: var(--subtle-text-color);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 5px 8px;
+    transition: color 0.2s ease;
+}
+
+.delete-btn:hover {
+    color: var(--danger-color);
+}
+
+/* Floating Action Button (+) */
+.fab {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: var(--success-color);
+    color: white;
+    font-size: 2rem;
+    border: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+
+.modal-content {
+    background-color: #fefefe;
+    padding: 30px;
+    border-radius: 12px;
+    width: 80%;
+    max-width: 500px;
+    max-height: 90vh;
+    position: relative;
+    overflow-y: auto; /* Allow content to scroll within the modal if it overflows */
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+}
+
+.close-button {
+    color: #aaa;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: black;
+}
+
+.modal-content h2 {
+    text-align: center;
+    color: var(--text-color);
+    margin-top: 10px;
+}
+
+.modal-content p {
+    margin: 20px 0;
+    line-height: 1.6;
+    color: var(--subtle-text-color);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.settings-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+}
+.btn-secondary {
+    background-color: var(--subtle-text-color);
+}
+.btn-primary {
+    background-color: var(--primary-color);
+}
+
+.btn-danger:hover {
+    background-color: var(--danger-hover-color);
+}
+.btn-primary:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.btn-secondary:hover {
+    background-color: #5a677a; /* A darker gray for secondary button hover */
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 0;
+    }
+
+    .container {
+        width: 100%;
+        height: 100vh;
+        max-width: none;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 1rem 1rem 5rem 1rem; /* Add more bottom padding to not be obscured by FAB */
+        overflow-y: auto;
+    }
+
+    .header {
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .header-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .product-item {
+        grid-template-columns: 1fr; /* Stack details and actions on mobile */
+    }
+
+    .product-actions {
+        flex-direction: row-reverse; /* Put delete button on the left */
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .fab {
+        bottom: 20px;
+        right: 20px;
+    }
+
+    .modal-content {
+        width: 95%; /* Use more screen width on small devices */
+        padding: 20px; /* Reduce padding on small screens */
+    }
+}
