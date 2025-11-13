@@ -120,6 +120,30 @@ h1 {
     color: var(--text-color);
 }
 
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 10px; /* Add some space from the sort dropdown */
+}
+
+.filter-group label {
+    font-weight: 500;
+    color: var(--text-color);
+    font-size: 1.3rem; /* Make icon larger */
+    margin-bottom: 0; /* Reset margin from the default label style */
+    cursor: pointer;
+    transition: color 0.2s ease;
+    line-height: 1; /* Ensure proper vertical alignment */
+}
+
+.filter-group label:hover {
+    color: var(--primary-color);
+}
+
+#show-expired-only-filter:checked + label {
+    color: var(--danger-color);
+}
 #product-form {
     display: flex;
     flex-direction: column;
@@ -219,10 +243,8 @@ textarea#import-textarea:focus {
     border-left: 5px solid var(--primary-color);
     border-radius: 8px;
     padding: 15px;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 15px;
-    align-items: start;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 1px 3px 0 var(--shadow-color), 0 1px 2px 0 var(--shadow-color);
     transition: box-shadow 0.2s ease;
 }
@@ -241,6 +263,42 @@ textarea#import-textarea:focus {
 .product-item:hover {
     box-shadow: 0 4px 8px 0 rgba(0,0,0,0.08);
 }
+
+.product-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.product-header-info p {
+    margin: 0;
+}
+
+.expiry-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.expiry-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 15px;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.expiry-item.expiring-soon { background-color: var(--warning-background-color); }
+.expiry-item.expired { background-color: #fff5f5; }
+
+.expiry-details { display: flex; justify-content: space-between; align-items: center; }
 
 .product-item.expiring-soon .product-quantity,
 .product-item.expired .product-quantity {
@@ -283,7 +341,7 @@ textarea#import-textarea:focus {
 .product-actions {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-end;
     gap: 10px;
 }
 
@@ -299,6 +357,13 @@ textarea#import-textarea:focus {
 
 .delete-btn:hover {
     color: var(--danger-color);
+}
+
+.barcode-container {
+    display: block;
+    width: 100%;
+    margin-top: 15px;
+    text-align: center;
 }
 
 /* Floating Action Button (+) */
@@ -408,6 +473,48 @@ textarea#import-textarea:focus {
 
 .btn-secondary:hover {
     background-color: #5a677a; /* A darker gray for secondary button hover */
+}
+
+.settings-section {
+    margin-bottom: 20px;
+}
+
+.settings-section h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+}
+
+.settings-section h3 i {
+    margin-right: 8px;
+    color: var(--primary-color);
+}
+
+.settings-divider {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 25px 0;
+}
+
+.sync-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.sync-controls input {
+    flex-grow: 1;
+    margin: 0;
+}
+
+#sync-code-display {
+    background-color: #edf2f7;
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    font-size: 0.9rem;
 }
 
 .hidden {

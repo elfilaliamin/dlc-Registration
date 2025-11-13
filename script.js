@@ -1,4 +1,13 @@
+import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+// --- Firebase Initialization ---
+const app = window.firebaseApp; // Get the initialized app from the window
+const db = getDatabase(app);
+
+// We wrap the entire script in DOMContentLoaded to ensure the DOM is ready.
+// Since we are using modules, the script is deferred by default, but this is good practice.
 document.addEventListener('DOMContentLoaded', () => {
+
     // Modal elements
     const modal = document.getElementById('product-modal');
     const addProductBtn = document.getElementById('add-product-btn');
@@ -18,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearAllBtn = document.getElementById('clear-all-btn');
     const sortSelect = document.getElementById('sort-select');
     const searchInput = document.getElementById('search-input');
+    const showExpiredOnlyFilter = document.getElementById('show-expired-only-filter');
 
     // Confirmation Modal elements
     const confirmClearModal = document.getElementById('confirm-clear-modal');
@@ -37,6 +47,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const importTextarea = document.getElementById('import-textarea');
     const importFromTextBtn = document.getElementById('import-from-text-btn');
 
+    // Firebase Sync elements
+    const generateSyncCodeBtn = document.getElementById('generate-sync-code-btn');
+    const syncCodeDisplay = document.getElementById('sync-code-display');
+    const syncCodeText = document.getElementById('sync-code-text');
+    const syncCodeInput = document.getElementById('sync-code-input');
+    const syncFromCodeBtn = document.getElementById('sync-from-code-btn');
+
     // Generic Notification Modal elements
     const notificationModal = document.getElementById('notification-modal');
     const notificationTitle = document.getElementById('notification-title');
@@ -45,7 +62,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- State Management ---
-    let products = JSON.parse(localStorage.getItem('products')) || [];
+    let products = [];
+
+    /**
+     * Migrates data from the old format (flat array) to the new format (grouped by barcode).
+     * This runs once if old data is detected.
+     */
+    const migrateData = () => {
+        const oldData = JSON.parse(localStorage.getItem('products'));
+        if (!oldData || oldData.length === 0 || (oldData[0] && oldData[0].expiries)) {
+            // No data, or data is already in the new format
+            products = oldData || [];
+            return;
+        }
+
+        console.log("Old data format detected. Migrating...");
+        const newProducts = [];
+        oldData.forEach(oldProduct => {
+            let productGroup = newProducts.find(p => p.barcode === oldProduct.barcode);
+            if (!productGroup) {
+                productGroup = {
+                    id: oldProduct.id, // Use the first encountered ID
+                    name: oldProduct.name,
+                    barcode: oldProduct.barcode,
+                    lastModified: oldProduct.id, // Set initial lastModified to creation time
+                    expiries: []
+                };
+                newProducts.push(productGroup);
+            }
+            productGroup.expiries.push({
+                expiryDate: oldProduct.expiryDate,
+                quantity: oldProduct.quantity
+            });
+        });
+        products = newProducts;
+        saveProducts(); // Save the newly formatted data
+    };
 
     // --- Modal Logic ---
     addProductBtn.onclick = () => {
@@ -116,21 +168,45 @@ document.addEventListener('DOMContentLoaded', () => {
         const searchTerm = searchInput.value.toLowerCase().trim();
         let filteredProducts = products;
 
-        if (searchTerm) {
-            filteredProducts = products.filter(product =>
+        if (searchTerm) { // Filter by name or barcode
+            filteredProducts = products.filter(product => 
                 product.name.toLowerCase().includes(searchTerm) ||
-                product.barcode.toLowerCase().includes(searchTerm)
+                product.barcode.includes(searchTerm)
             );
         }
+
+        // Apply "Show Expired Only" filter
+        const showExpiredOnly = showExpiredOnlyFilter.checked;
+        if (showExpiredOnly) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            filteredProducts = filteredProducts.filter(product => {
+                // A product is considered "expired" if it has at least one expiry entry that is in the past.
+                return product.expiries.some(expiry => {
+                    const expiryDateObj = new Date(expiry.expiryDate);
+                    expiryDateObj.setHours(0, 0, 0, 0);
+                    return expiryDateObj < today;
+                });
+            });
+        }
+
 
         const sortBy = sortSelect.value;
 
         if (sortBy === 'expiryDate') {
             // Sort by expiry date, with the nearest date at the top
-            filteredProducts.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
-        } else if (sortBy === 'registrationDate') {
-            // Sort by registration ID (timestamp), oldest first
-            filteredProducts.sort((a, b) => a.id - b.id);
+            filteredProducts.sort((a, b) => {
+                const nearestA = Math.min(...a.expiries.map(e => new Date(e.expiryDate).getTime()));
+                const nearestB = Math.min(...b.expiries.map(e => new Date(e.expiryDate).getTime()));
+                return nearestA - nearestB;
+            });
+        } else if (sortBy === 'lastModified') {
+            // Sort by last modified date, newest first
+            filteredProducts.sort((a, b) => (b.lastModified || b.id) - (a.lastModified || a.id));
+        } else if (sortBy === 'name') {
+            // Sort by product name, alphabetically
+            filteredProducts.sort((a, b) => a.name.localeCompare(b.name));
         }
 
         filteredProducts.forEach(product => {
@@ -138,42 +214,50 @@ document.addEventListener('DOMContentLoaded', () => {
             productItem.className = 'product-item';
             productItem.dataset.id = product.id;
 
-            // Format date for display
-            const [year, month, day] = product.expiryDate.split('-'); // This can fail if date is invalid
-            const displayDate = `${day}/${month}/${year}`;
+            // Sort expiries within the product card by date
+            product.expiries.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
 
-            // --- Expiry Status Logic ---
-            const today = new Date();
-            const expiryDate = new Date(product.expiryDate);
-            // Reset time to 00:00:00 for accurate day comparison
-            today.setHours(0, 0, 0, 0);
-            expiryDate.setHours(0, 0, 0, 0);
+            const expiryListHTML = product.expiries.map(expiry => {
+                const [year, month, day] = expiry.expiryDate.split('-');
+                const displayDate = `${day}/${month}/${year}`;
 
-            const timeDiff = expiryDate.getTime() - today.getTime();
-            const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const expiryDateObj = new Date(expiry.expiryDate);
+                expiryDateObj.setHours(0, 0, 0, 0);
 
-            if (dayDiff < 0) {
-                productItem.classList.add('expired');
-            } else if (dayDiff <= 7) {
-                productItem.classList.add('expiring-soon');
-            }
+                const timeDiff = expiryDateObj.getTime() - today.getTime();
+                const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+                let statusClass = '';
+                if (dayDiff < 0) statusClass = 'expired';
+                else if (dayDiff <= 7) statusClass = 'expiring-soon';
+
+                return /*html*/`
+                    <li class="expiry-item ${statusClass}" data-expiry-date="${expiry.expiryDate}">
+                        <div class="expiry-details">
+                            <span><strong>Expires:</strong> ${displayDate}</span>
+                            <span class="quantity-control">
+                                <button class="quantity-btn decrease-quantity" title="Decrease Quantity">-</button>
+                                <span class="product-quantity">${expiry.quantity}</span>
+                                <button class="quantity-btn increase-quantity" title="Increase Quantity">+</button>
+                            </span>
+                        </div>
+                        <button class="delete-btn" title="Delete this expiry entry"><i class="fas fa-trash-alt"></i></button>
+                    </li>
+                `;
+            }).join('');
 
             productItem.innerHTML = /*html*/`
-                <div class="product-details">
-                    <p><strong>Product:</strong> ${product.name}</p>
-                    <p><strong>Quantity:</strong>
-                        <span class="quantity-control">
-                            <button class="quantity-btn decrease-quantity" title="Decrease Quantity">-</button>
-                            <span class="product-quantity">${product.quantity}</span>
-                            <button class="quantity-btn increase-quantity" title="Increase Quantity">+</button>
-                        </span>
-                    </p>
-                    <p><strong>Expiring Date:</strong> ${displayDate}</p>
-                    <p><strong>IBN:</strong> ${product.barcode}</p>
+                <div class="product-header">
+                    <div class="product-header-info">
+                        <p><strong>${product.name}</strong></p>
+                        <p><small>IBN: ${product.barcode}</small></p>
+                    </div>
                 </div>
-                <div class="product-actions">
+                <ul class="expiry-list">${expiryListHTML}</ul>
+                <div class="barcode-container">
                     <svg class="barcode-svg"></svg>
-                    <button class="delete-btn" title="Delete Product"><i class="fas fa-trash-alt"></i></button>
                 </div>
             `;
 
@@ -181,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Generate barcode for the item
             JsBarcode(productItem.querySelector('.barcode-svg'), product.barcode, {
-                format: "CODE128",
+                format: "CODE128", // Or your preferred format
                 lineColor: "#000",
                 width: 2,
                 height: 60,
@@ -195,44 +279,49 @@ document.addEventListener('DOMContentLoaded', () => {
     productForm.addEventListener('submit', (event) => {
         event.preventDefault();
 
-        // Pad day and month with a leading zero if needed
-        const day = expiryDayInput.value.padStart(2, '0'); // This was missing its declaration
+        const day = expiryDayInput.value.padStart(2, '0');
         const month = expiryMonthInput.value.padStart(2, '0');
         const year = expiryYearInput.value;
         const isoDate = `${year}-${month}-${day}`;
 
         const barcode = barcodeInput.value.trim();
-        const existingProduct = products.find(p => p.barcode === barcode);
+        const quantity = parseInt(quantityInput.value);
+        const name = productNameInput.value;
 
-        if (existingProduct) {
-            if (existingProduct.expiryDate === isoDate) {
+        let productGroup = products.find(p => p.barcode === barcode);
+
+        if (productGroup) {
+            // Product with this barcode already exists, find the expiry entry
+            let expiryEntry = productGroup.expiries.find(e => e.expiryDate === isoDate);
+            if (expiryEntry) {
                 // Same barcode, same date -> ask to update quantity
-                pendingProduct = { existingProduct, quantityToAdd: quantityInput.value };
-                updateQuantityModal.classList.remove('hidden');
-                modal.classList.add('hidden'); // Hide the add form
+                pendingProduct = { productGroup, expiryEntry, quantityToAdd: quantity };
+                updateQuantityModal.classList.remove('hidden'); // Show confirmation modal
             } else {
-                // Same barcode, different date -> notify and add as new
-                showNotification('A product with this barcode but a different expiry date already exists. A new item will be created.', 'Notice');
-                addNewProduct(isoDate, barcode); // Still add the product after notifying
+                // Same barcode, different date -> add new expiry entry
+                productGroup.expiries.push({ expiryDate: isoDate, quantity: quantity });
+                productGroup.lastModified = Date.now(); // Update timestamp
+                saveAndRender();
             }
         } else {
-            // No existing product -> add as new
-            addNewProduct(isoDate, barcode);
+            // No existing product with this barcode -> add a new product group
+            const newProductGroup = {
+                id: Date.now(),
+                name: name,
+                barcode: barcode,
+                lastModified: Date.now(), // Set timestamp on creation
+                expiries: [{ expiryDate: isoDate, quantity: quantity }]
+            };
+            products.push(newProductGroup);
+            saveAndRender();
         }
+
+        modal.classList.add('hidden');
+        productForm.reset();
     });
 
-    function addNewProduct(isoDate, barcode) {
-         const newProduct = {
-             id: Date.now(),
-             name: productNameInput.value,
-             quantity: quantityInput.value,
-             expiryDate: isoDate,
-             barcode: barcode
-         };
-         products.push(newProduct);
-         saveAndRender();
-         modal.classList.add('hidden');
-    }
+    // This function is no longer needed as logic is moved into the submit handler
+    // function addNewProduct(isoDate, barcode) { ... }
 
     function saveAndRender() {
         saveProducts(); 
@@ -241,8 +330,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     confirmUpdateBtn.addEventListener('click', () => {
-        const { existingProduct, quantityToAdd } = pendingProduct;
-        existingProduct.quantity = parseInt(existingProduct.quantity) + parseInt(quantityToAdd);
+        const { productGroup, expiryEntry, quantityToAdd } = pendingProduct;
+        expiryEntry.quantity += quantityToAdd;
+        productGroup.lastModified = Date.now(); // Update timestamp
         saveAndRender();
         updateQuantityModal.classList.add('hidden');
         pendingProduct = null;
@@ -254,32 +344,45 @@ document.addEventListener('DOMContentLoaded', () => {
         const decreaseBtn = event.target.closest('.decrease-quantity');
 
         if (deleteButton) {
-            const productItem = deleteButton.closest('.product-item'); 
+            const productItem = deleteButton.closest('.product-item');
             const productId = Number(productItem.dataset.id);
-            const productToDelete = products.find(p => p.id === productId);
+            const productGroup = products.find(p => p.id === productId);
+            const expiryItem = deleteButton.closest('.expiry-item');
+            const expiryDate = expiryItem.dataset.expiryDate;
 
-            if (productToDelete) {
+            if (productGroup) {
                 const deleteCallback = () => {
-                    products = products.filter(product => product.id !== productId);
+                    // Find and remove the specific expiry entry
+                    productGroup.expiries = productGroup.expiries.filter(e => e.expiryDate !== expiryDate);
+                    // If no expiries are left, remove the entire product group
+                    if (productGroup.expiries.length === 0) {
+                        products = products.filter(p => p.id !== productId);
+                    }
+                    productGroup.lastModified = Date.now(); // Even deletion is a modification
                     saveAndRender();
                 };
-                showNotification(`Are you sure you want to delete "${productToDelete.name}"?`, 'Confirm Deletion', deleteCallback);
+                showNotification(`Are you sure you want to delete the entry for "${productGroup.name}" expiring on ${expiryDate.split('-').reverse().join('/')}?`, 'Confirm Deletion', deleteCallback);
             }
         } else if (increaseBtn) {
             const productItem = increaseBtn.closest('.product-item');
             const productId = Number(productItem.dataset.id);
-            const product = products.find(p => p.id === productId);
-            product.quantity = parseInt(product.quantity) + 1;
+            const productGroup = products.find(p => p.id === productId);
+            const expiryDate = increaseBtn.closest('.expiry-item').dataset.expiryDate;
+            const expiry = productGroup.expiries.find(e => e.expiryDate === expiryDate);
+            expiry.quantity++;
+            productGroup.lastModified = Date.now(); // Update timestamp
             saveAndRender();
         } else if (decreaseBtn) {
             const productItem = decreaseBtn.closest('.product-item');
             const productId = Number(productItem.dataset.id);
-            const product = products.find(p => p.id === productId);
-            if (product.quantity > 1) {
-                product.quantity = parseInt(product.quantity) - 1;
+            const productGroup = products.find(p => p.id === productId);
+            const expiryDate = decreaseBtn.closest('.expiry-item').dataset.expiryDate;
+            const expiry = productGroup.expiries.find(e => e.expiryDate === expiryDate);
+            if (expiry.quantity > 1) {
+                expiry.quantity--;
+                productGroup.lastModified = Date.now(); // Update timestamp
                 saveAndRender();
-            }
-            // Optional: Ask to delete if quantity becomes 0
+            } // Optional: You could add a confirmation to delete if quantity becomes 0
         }
     });
 
@@ -367,9 +470,92 @@ document.addEventListener('DOMContentLoaded', () => {
         renderProducts(); // Re-render on every keystroke in the search bar
     });
 
+    showExpiredOnlyFilter.addEventListener('change', () => {
+        renderProducts(); // Re-render when the filter is toggled
+    });
+
+    // --- Firebase Sync Logic ---
+
+    generateSyncCodeBtn.addEventListener('click', async () => {
+        if (products.length === 0) {
+            showNotification('You have no products to sync.', 'Sync Error');
+            return;
+        }
+
+        // Generate a simple 6-digit random code
+        const syncCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const syncRef = ref(db, `syncs/${syncCode}`);
+
+        // Show loading state
+        generateSyncCodeBtn.disabled = true;
+        generateSyncCodeBtn.textContent = 'Generating...';
+
+        try {
+            // Create a payload with the data and a timestamp for auto-cleanup (e.g., 10 minutes)
+            const payload = {
+                products: products,
+                createdAt: Date.now(),
+                expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes from now
+            };
+            await set(syncRef, payload);
+
+            // Display the code to the user
+            syncCodeText.textContent = syncCode;
+            syncCodeDisplay.classList.remove('hidden');
+            showNotification(`Your sync code is ${syncCode}. Enter it on your other device within 10 minutes.`, 'Code Generated');
+
+        } catch (error) {
+            console.error("Firebase sync error:", error);
+            showNotification('Could not generate sync code. Please check your connection and try again.', 'Firebase Error');
+        } finally {
+            // Reset button
+            generateSyncCodeBtn.disabled = false;
+            generateSyncCodeBtn.textContent = 'Generate Sync Code';
+        }
+    });
+
+    syncFromCodeBtn.addEventListener('click', async () => {
+        const syncCode = syncCodeInput.value.trim();
+        if (!syncCode) {
+            showNotification('Please enter a sync code.', 'Input Required');
+            return;
+        }
+
+        // Disable the other sync button to prevent simultaneous operations
+        syncFromCodeBtn.disabled = true;
+        syncCodeInput.disabled = true;
+
+        const syncRef = ref(db, `syncs/${syncCode}`);
+
+        try {
+            const snapshot = await get(syncRef);
+            if (snapshot.exists()) {
+                const payload = snapshot.val();
+                const importedProducts = payload.products;
+
+                const syncCallback = () => {
+                    products = importedProducts;
+                    saveAndRender();
+                    settingsModal.classList.add('hidden');
+                    showNotification(`Successfully synced ${products.length} products.`, 'Sync Complete');
+                    remove(syncRef); // IMPORTANT: Delete the data from Firebase after successful sync
+                };
+                showNotification('This will replace all current data with the synced data. This action cannot be undone. Are you sure?', 'Confirm Sync', syncCallback);
+            } else {
+                showNotification('Invalid or expired sync code. Please try again.', 'Sync Failed');
+            }
+        } catch (error) {
+            console.error("Firebase sync error:", error);
+            showNotification('Could not sync data. Please check your connection and the code.', 'Firebase Error');
+        } finally {
+            syncFromCodeBtn.disabled = false;
+            syncCodeInput.disabled = false;
+        }
+    });
 
     // --- Initial Load ---
-    renderProducts();
+    migrateData(); // Migrate data if necessary
+    renderProducts(); // Initial render
 
     document.addEventListener('keydown', (e) => {
         if (e.key === "Escape") { // Close any open modal on Escape key press

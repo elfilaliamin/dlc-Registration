@@ -19,9 +19,14 @@
         <div class="header-controls">
             <div class="header-controls-group">
                 <select id="sort-select">
+                    <option value="lastModified">Sort by Last Modified</option>
                     <option value="expiryDate">Sort by Expiry Date</option>
-                    <option value="registrationDate">Sort by Registration</option>
+                    <option value="name">Sort by Name (A-Z)</option>
                 </select>
+                <div class="filter-group">
+                    <input type="checkbox" id="show-expired-only-filter">
+                    <label for="show-expired-only-filter" title="Show Expired Only"><i class="fas fa-calendar-times"></i></label>
+                </div>
                 <button id="clear-all-btn" class="clear-btn">Clear All</button>
             </div>
             <button id="settings-btn" class="icon-btn" title="Settings"><i class="fas fa-cog"></i></button>
@@ -98,8 +103,28 @@
         <div class="modal-content">
             <span class="close-button">&times;</span>
             <h2>Settings</h2>
-            <p>Manage your application data. It's a good idea to export your data periodically as a backup.</p>
+            
+            <div class="settings-section">
+                <h3><i class="fas fa-sync-alt"></i> Sync Data Between Devices</h3>
+                <p>Generate a one-time code on your first device, then enter it on your second device to sync your data.</p>
+                <div class="sync-controls">
+                    <button id="generate-sync-code-btn" class="btn-primary">Generate Sync Code</button>
+                    <div id="sync-code-display" class="hidden">
+                        Your sync code is: <strong id="sync-code-text"></strong>
+                        <small>This code is valid for 10 minutes.</small>
+                    </div>
+                </div>
+                <div class="sync-controls">
+                    <input type="text" id="sync-code-input" placeholder="Enter sync code here...">
+                    <button id="sync-from-code-btn" class="btn-secondary">Sync from Code</button>
+                </div>
+            </div>
+
+            <hr class="settings-divider">
+
             <div class="settings-actions">
+                <h3><i class="fas fa-file-export"></i> Manual Backup</h3>
+                <p>It's a good idea to export your data periodically as a backup.</p>
                 <button id="export-data-btn" class="btn-primary">Copy Data to Clipboard</button>
                 <p>To import, paste your data into the box below and click the import button.</p>
                 <textarea id="import-textarea" placeholder="Paste your JSON data here..."></textarea>
@@ -121,6 +146,26 @@
     </div>
 
 </body>
+<!-- Firebase SDK -->
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  // We will import database functions in script.js
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDmvA2eNUF53Y_qTR41ZfEBbW5-jlBCQVs",
+    authDomain: "dlc-registration.firebaseapp.com",
+    databaseURL: "https://dlc-registration-default-rtdb.firebaseio.com",
+    projectId: "dlc-registration",
+    storageBucket: "dlc-registration.firebasestorage.app",
+    messagingSenderId: "137635642856",
+    appId: "1:137635642856:web:0dae0695e3e169966f385d"
+  };
+
+  // Initialize Firebase
+  window.firebaseApp = initializeApp(firebaseConfig);
+</script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-<script src="script.js"></script>
+<script src="script.js" type="module"></script>
 </html>
