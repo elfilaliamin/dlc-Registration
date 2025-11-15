@@ -4,10 +4,9 @@ import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/fire
 const app = window.firebaseApp; // Get the initialized app from the window
 const db = getDatabase(app);
 
-// We wrap the entire script in DOMContentLoaded to ensure the DOM is ready.
-// Since we are using modules, the script is deferred by default, but this is good practice.
 document.addEventListener('DOMContentLoaded', () => {
 
+    // --- Element Selection ---
     // Modal elements
     const modal = document.getElementById('product-modal');
     const addProductBtn = document.getElementById('add-product-btn');
@@ -75,8 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationMessage = document.getElementById('notification-message');
     const notificationActions = document.getElementById('notification-actions');
 
-
-    // --- State Management ---
     let products = [];
 
     /**
@@ -85,13 +82,13 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     const migrateData = () => {
         const oldData = JSON.parse(localStorage.getItem('products'));
-        if (!oldData || oldData.length === 0 || (oldData[0] && oldData[0].expiries)) {
+        if (!oldData || !Array.isArray(oldData) || oldData.length === 0 || (oldData[0] && oldData[0].expiries)) {
             // No data, or data is already in the new format
             products = oldData || [];
             return;
         }
 
-        console.log("Old data format detected. Migrating...");
+        console.log("Old data format detected. Migrating to new grouped format...");
         const newProducts = [];
         oldData.forEach(oldProduct => {
             let productGroup = newProducts.find(p => p.barcode === oldProduct.barcode);
@@ -115,6 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Modal Logic ---
+    // --- Modal Logic ---
     addProductBtn.onclick = () => {
         productForm.reset(); // Clear form inputs
         modal.classList.remove('hidden');
@@ -133,8 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
             notificationModal.classList.add('hidden');
         }
     };
-
-    // --- Core Functions ---
 
     /**
      * Shows a custom notification modal.
@@ -172,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         notificationModal.classList.remove('hidden');
     };
 
+    // --- Core Functions: Data & Rendering ---
     const saveProducts = () => {
         localStorage.setItem('products', JSON.stringify(products));
     };
@@ -351,15 +348,6 @@ document.addEventListener('DOMContentLoaded', () => {
         productForm.reset();
     });
 
-    // This function is no longer needed as logic is moved into the submit handler
-    // function addNewProduct(isoDate, barcode) { ... }
-
-    function saveAndRender() {
-        saveProducts(); 
-        renderProducts();
-        productForm.reset();
-    }
-
     confirmUpdateBtn.addEventListener('click', () => {
         const { productGroup, expiryEntry, quantityToAdd } = pendingProduct;
         expiryEntry.quantity += quantityToAdd;
@@ -369,6 +357,12 @@ document.addEventListener('DOMContentLoaded', () => {
         pendingProduct = null;
     });
 
+    cancelUpdateBtn.addEventListener('click', () => {
+        updateQuantityModal.classList.add('hidden');
+        pendingProduct = null;
+    });
+
+    // --- Event Delegation for Product List ---
     productListDiv.addEventListener('click', (event) => {
         const deleteButton = event.target.closest('.delete-btn');
         const increaseBtn = event.target.closest('.increase-quantity');
@@ -458,6 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- Edit Modal Listeners ---
     // Handle the submission of the edit form
     editProductForm.addEventListener('submit', (event) => {
         event.preventDefault();
@@ -512,6 +507,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- Clear All & Settings Listeners ---
+    confirmClearBtn.addEventListener('click', () => {
+        products = [];
+        saveProducts();
+        renderProducts();
+        confirmClearModal.classList.add('hidden');
+    });
+
     clearAllBtn.addEventListener('click', () => {
         confirmClearModal.classList.remove('hidden');
     });
@@ -520,18 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmClearModal.classList.add('hidden');
     });
 
-    confirmClearBtn.addEventListener('click', () => {
-        products = [];
-        saveProducts();
-        renderProducts();
-        confirmClearModal.classList.add('hidden');
-    });
-
-    cancelUpdateBtn.addEventListener('click', () => {
-        updateQuantityModal.classList.add('hidden');
-        pendingProduct = null;
-    });
-
+    // --- Settings Modal: Import/Export ---
     settingsBtn.addEventListener('click', () => {
         importTextarea.value = ''; // Clear the textarea on open
         settingsModal.classList.remove('hidden');
@@ -586,6 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- Filtering and Sorting ---
     sortSelect.addEventListener('change', () => {
         renderProducts(); // Re-render the list with the new sort order
     });
@@ -600,8 +593,13 @@ document.addEventListener('DOMContentLoaded', () => {
         renderProducts();
     });
 
-    // --- Firebase Sync Logic ---
+    function saveAndRender() {
+        saveProducts();
+        renderProducts();
+        productForm.reset();
+    }
 
+    // --- Firebase Sync Logic ---
     generateSyncCodeBtn.addEventListener('click', async () => {
         if (products.length === 0) {
             showNotification('You have no products to sync.', 'Sync Error');
@@ -682,10 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Initial Load ---
-    migrateData(); // Migrate data if necessary
-    renderProducts(); // Initial render
-
+    // --- Global Keydown Listener ---
     document.addEventListener('keydown', (e) => {
         if (e.key === "Escape") { // Close any open modal on Escape key press
             modal.classList.add('hidden');
@@ -696,4 +691,8 @@ document.addEventListener('DOMContentLoaded', () => {
             notificationModal.classList.add('hidden');
         }
     });
+
+    // --- Initial Load ---
+    migrateData(); // Migrate data if necessary
+    renderProducts(); // Initial render
 });
