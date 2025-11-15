@@ -39,6 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const editProductModal = document.getElementById('edit-product-modal');
     const editProductForm = document.getElementById('edit-product-form');
     const editProductIdInput = document.getElementById('edit-product-id');
+    const closeEditModalBtn = document.getElementById('close-edit-modal');
+
     const editProductNameInput = document.getElementById('edit-product-name');
     const editBarcodeValueInput = document.getElementById('edit-barcode-value');
 
@@ -51,6 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Settings Modal elements
     const settingsModal = document.getElementById('settings-modal');
     const settingsBtn = document.getElementById('settings-btn');
+    const closeSettingsModalBtn = document.getElementById('close-settings-modal');
+
     const exportDataBtn = document.getElementById('export-data-btn');
     const importTextarea = document.getElementById('import-textarea');
     const importFromTextBtn = document.getElementById('import-from-text-btn');
@@ -116,6 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('hidden');
     };
     closeProductModalBtn.onclick = () => modal.classList.add('hidden');
+    closeEditModalBtn.onclick = () => editProductModal.classList.add('hidden');
+    closeSettingsModalBtn.onclick = () => settingsModal.classList.add('hidden');
+
     window.onclick = (event) => {
         if (event.target.classList.contains('modal')) { // Click on modal background
             modal.classList.add('hidden');
@@ -528,16 +535,6 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsBtn.addEventListener('click', () => {
         importTextarea.value = ''; // Clear the textarea on open
         settingsModal.classList.remove('hidden');
-    });
-
-    // Add listeners for the new edit modal's close button
-    document.getElementById('close-edit-modal').addEventListener('click', () => {
-        editProductModal.classList.add('hidden');
-    });
-
-    // Find the close button inside the settings modal and add a listener
-    document.getElementById('close-settings-modal').addEventListener('click', () => {
-        settingsModal.classList.add('hidden');
     });
 
     exportDataBtn.addEventListener('click', async () => {
