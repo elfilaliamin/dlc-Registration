@@ -22,17 +22,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const expiryYearInput = document.getElementById('expiry-year');
     const barcodeInput = document.getElementById('barcode-value');
 
+    // Scanner elements
+    const scanBarcodeBtn = document.getElementById('scan-barcode-btn');
+    const scannerModal = document.getElementById('scanner-modal');
+    const scannerCloseBtn = document.getElementById('scanner-close-btn');
+
     // List and clear button
     const productListDiv = document.getElementById('product-list');
     const clearAllBtn = document.getElementById('clear-all-btn');
     const sortSelect = document.getElementById('sort-select');
     const searchInput = document.getElementById('search-input');
-    const showExpiredOnlyFilter = document.getElementById('show-expired-only-filter');
+    // This is now a button, not a checkbox
+    const filterExpiredBtn = document.getElementById('filter-expired-btn');
 
     // Confirmation Modal elements
     const confirmClearModal = document.getElementById('confirm-clear-modal');
     const confirmClearBtn = document.getElementById('confirm-clear-btn');
     const cancelClearBtn = document.getElementById('cancel-clear-btn');
+
+    // Edit Product Modal elements
+    const editProductModal = document.getElementById('edit-product-modal');
+    const editProductForm = document.getElementById('edit-product-form');
+    const editProductIdInput = document.getElementById('edit-product-id');
+    const editProductNameInput = document.getElementById('edit-product-name');
+    const editBarcodeValueInput = document.getElementById('edit-barcode-value');
 
     // Update Quantity Modal elements
     const updateQuantityModal = document.getElementById('update-quantity-modal');
@@ -111,7 +124,9 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmClearModal.classList.add('hidden');
             updateQuantityModal.classList.add('hidden');
             settingsModal.classList.add('hidden');
+            editProductModal.classList.add('hidden');
             notificationModal.classList.add('hidden');
+            if (!scannerModal.classList.contains('hidden')) stopScanner(); // Stop scanner if it's open
         }
     };
 
@@ -176,8 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Apply "Show Expired Only" filter
-        const showExpiredOnly = showExpiredOnlyFilter.checked;
-        if (showExpiredOnly) {
+        // Check if the filter button has the 'active' class
+        if (filterExpiredBtn.classList.contains('active')) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
@@ -243,7 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <button class="quantity-btn increase-quantity" title="Increase Quantity">+</button>
                             </span>
                         </div>
-                        <button class="delete-btn" title="Delete this expiry entry"><i class="fas fa-trash-alt"></i></button>
                     </li>
                 `;
             }).join('');
@@ -251,9 +265,12 @@ document.addEventListener('DOMContentLoaded', () => {
             productItem.innerHTML = /*html*/`
                 <div class="product-header">
                     <div class="product-header-info">
-                        <p><strong>${product.name}</strong></p>
+                        <p><strong><a href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(product.name)}" target="_blank" rel="noopener noreferrer" class="product-name-link" title="Search for images of ${product.name}">${product.name}</a></strong></p>
                         <p><small>IBN: ${product.barcode}</small></p>
                     </div>
+                    <button class="edit-product-btn icon-btn" title="Edit Product">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
                 </div>
                 <ul class="expiry-list">${expiryListHTML}</ul>
                 <div class="barcode-container">
@@ -275,6 +292,52 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Event Listeners ---
+
+    // --- Barcode Scanner Logic ---
+    let html5QrCode = null;
+
+    const onScanSuccess = (decodedText, decodedResult) => {
+        // Handle the scanned code
+        console.log(`Code matched = ${decodedText}`, decodedResult);
+        barcodeInput.value = decodedText; // Populate the input field
+        stopScanner();
+    };
+
+    const onScanFailure = (error) => {
+        // This callback is called frequently, so we typically ignore it unless debugging.
+        // console.warn(`Code scan error = ${error}`);
+    };
+
+    const startScanner = () => {
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
+        scannerModal.classList.remove('hidden');
+        html5QrCode.start(
+            { facingMode: "environment" }, // Use the rear camera
+            {
+                fps: 10,    // Optional, frame per seconds for qr code scanning
+                qrbox: { width: 250, height: 250 }  // Optional, scan box size
+            },
+            onScanSuccess,
+            onScanFailure
+        ).catch(err => {
+            console.error("Failed to start scanner", err);
+            showNotification("Could not start camera. Please ensure you have a camera and have granted permission.", "Camera Error");
+            scannerModal.classList.add('hidden');
+        });
+    };
+
+    const stopScanner = () => {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => {
+                console.log("QR Code scanning stopped.");
+            }).catch(err => {
+                console.error("Failed to stop scanner.", err);
+            });
+        }
+        scannerModal.classList.add('hidden');
+    };
 
     productForm.addEventListener('submit', (event) => {
         event.preventDefault();
@@ -342,6 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deleteButton = event.target.closest('.delete-btn');
         const increaseBtn = event.target.closest('.increase-quantity');
         const decreaseBtn = event.target.closest('.decrease-quantity');
+        const editBtn = event.target.closest('.edit-product-btn');
 
         if (deleteButton) {
             const productItem = deleteButton.closest('.product-item');
@@ -383,8 +447,107 @@ document.addEventListener('DOMContentLoaded', () => {
                 productGroup.lastModified = Date.now(); // Update timestamp
                 saveAndRender();
             } // Optional: You could add a confirmation to delete if quantity becomes 0
+        } else if (editBtn) {
+            const productItem = editBtn.closest('.product-item');
+            const productId = Number(productItem.dataset.id);
+            const productGroup = products.find(p => p.id === productId);
+
+            if (productGroup) {
+                // Populate the modal with current product data
+                editProductIdInput.value = productGroup.id;
+                editProductNameInput.value = productGroup.name;
+                editBarcodeValueInput.value = productGroup.barcode;
+
+                // --- Dynamically populate the expiries list for editing ---
+                const expiriesContainer = document.getElementById('edit-expiries-list-container');
+                expiriesContainer.innerHTML = ''; // Clear previous entries
+
+                productGroup.expiries.forEach(expiry => {
+                    const [year, month, day] = expiry.expiryDate.split('-');
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'edit-expiry-item';
+                    itemDiv.innerHTML = /*html*/`
+                        <div class="form-group">
+                            <label>Quantity</label>
+                            <input type="number" class="edit-expiry-quantity" value="${expiry.quantity}" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Expiry Date (DD/MM/YYYY)</label>
+                            <div class="date-inputs">
+                                <input type="number" class="edit-expiry-day" placeholder="DD" value="${day}" min="1" max="31" required>
+                                <input type="number" class="edit-expiry-month" placeholder="MM" value="${month}" min="1" max="12" required>
+                                <input type="number" class="edit-expiry-year" placeholder="YYYY" value="${year}" min="2020" required>
+                            </div>
+                        </div>
+                        <button type="button" class="delete-btn icon-btn" title="Delete this entry"><i class="fas fa-trash-alt"></i></button>
+                    `;
+                    expiriesContainer.appendChild(itemDiv);
+                });
+
+                // Show the modal
+                editProductModal.classList.remove('hidden');
+            }
         }
     });
+
+    // Handle the submission of the edit form
+    editProductForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const productId = Number(editProductIdInput.value);
+        const productGroup = products.find(p => p.id === productId);
+
+        if (productGroup) {
+            // Update name and barcode
+            productGroup.name = editProductNameInput.value.trim();
+            productGroup.barcode = editBarcodeValueInput.value.trim();
+
+            // Rebuild the expiries array from the modal inputs
+            const newExpiries = [];
+            const expiryItems = editProductModal.querySelectorAll('.edit-expiry-item');
+            expiryItems.forEach(item => {
+                const quantity = parseInt(item.querySelector('.edit-expiry-quantity').value, 10);
+                const day = item.querySelector('.edit-expiry-day').value.padStart(2, '0');
+                const month = item.querySelector('.edit-expiry-month').value.padStart(2, '0');
+                const year = item.querySelector('.edit-expiry-year').value;
+
+                if (quantity > 0 && day && month && year) {
+                    newExpiries.push({
+                        quantity: quantity,
+                        expiryDate: `${year}-${month}-${day}`
+                    });
+                }
+            });
+
+            productGroup.expiries = newExpiries;
+
+            // If all expiries were deleted, remove the product group itself
+            if (productGroup.expiries.length === 0) {
+                products = products.filter(p => p.id !== productId);
+            }
+
+            productGroup.lastModified = Date.now();
+            saveAndRender();
+            editProductModal.classList.add('hidden');
+            showNotification('Product updated successfully.', 'Update Complete');
+        }
+    });
+
+    // Add a click listener within the edit modal to handle deleting expiry entries
+    editProductModal.addEventListener('click', (event) => {
+        const deleteBtn = event.target.closest('.delete-btn');
+        if (deleteBtn) {
+            const expiryItem = deleteBtn.closest('.edit-expiry-item');
+            if (expiryItem) {
+                // Just remove the element from the modal. The final save will persist the change.
+                expiryItem.remove();
+            }
+        }
+    });
+
+    // Scanner button listeners
+    scanBarcodeBtn.addEventListener('click', startScanner);
+    scannerModal.querySelector('.close-button').addEventListener('click', stopScanner);
+    scannerCloseBtn.addEventListener('click', stopScanner);
 
     clearAllBtn.addEventListener('click', () => {
         confirmClearModal.classList.remove('hidden');
@@ -409,6 +572,11 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsBtn.addEventListener('click', () => {
         importTextarea.value = ''; // Clear the textarea on open
         settingsModal.classList.remove('hidden');
+    });
+
+    // Add listeners for the new edit modal's close button
+    editProductModal.querySelector('.close-button').addEventListener('click', () => {
+        editProductModal.classList.add('hidden');
     });
 
     // Find the close button inside the settings modal and add a listener
@@ -448,6 +616,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (Array.isArray(importedProducts)) {
                 const importCallback = () => {
                     products = importedProducts;
+                    // Deactivate the expired filter to ensure imported products are visible
+                    filterExpiredBtn.classList.remove('active');
+
                     saveAndRender();
                     importTextarea.value = ''; // Clear textarea after import
                     settingsModal.classList.add('hidden');
@@ -470,8 +641,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderProducts(); // Re-render on every keystroke in the search bar
     });
 
-    showExpiredOnlyFilter.addEventListener('change', () => {
-        renderProducts(); // Re-render when the filter is toggled
+    // Handle the new filter button
+    filterExpiredBtn.addEventListener('click', () => {
+        filterExpiredBtn.classList.toggle('active');
+        renderProducts();
     });
 
     // --- Firebase Sync Logic ---
@@ -535,6 +708,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const syncCallback = () => {
                     products = importedProducts;
+                    // Deactivate the expired filter to ensure synced products are visible
+                    filterExpiredBtn.classList.remove('active');
+
                     saveAndRender();
                     settingsModal.classList.add('hidden');
                     showNotification(`Successfully synced ${products.length} products.`, 'Sync Complete');
@@ -563,7 +739,9 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmClearModal.classList.add('hidden');
             updateQuantityModal.classList.add('hidden');
             settingsModal.classList.add('hidden');
+            editProductModal.classList.add('hidden');
             notificationModal.classList.add('hidden');
+            if (!scannerModal.classList.contains('hidden')) stopScanner();
         }
     });
 });
