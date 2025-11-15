@@ -22,11 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const expiryYearInput = document.getElementById('expiry-year');
     const barcodeInput = document.getElementById('barcode-value');
 
-    // Scanner elements
-    const scanBarcodeBtn = document.getElementById('scan-barcode-btn');
-    const scannerModal = document.getElementById('scanner-modal');
-    const scannerCloseBtn = document.getElementById('scanner-close-btn');
-
     // List and clear button
     const productListDiv = document.getElementById('product-list');
     const clearAllBtn = document.getElementById('clear-all-btn');
@@ -66,6 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const syncCodeText = document.getElementById('sync-code-text');
     const syncCodeInput = document.getElementById('sync-code-input');
     const syncFromCodeBtn = document.getElementById('sync-from-code-btn');
+
+    // Adjusting style directly as a quick fix for UI tweaking.
+    syncCodeInput.style.minWidth = '120px';
 
     // Generic Notification Modal elements
     const notificationModal = document.getElementById('notification-modal');
@@ -126,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
             settingsModal.classList.add('hidden');
             editProductModal.classList.add('hidden');
             notificationModal.classList.add('hidden');
-            if (!scannerModal.classList.contains('hidden')) stopScanner(); // Stop scanner if it's open
         }
     };
 
@@ -293,51 +290,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners ---
 
-    // --- Barcode Scanner Logic ---
-    let html5QrCode = null;
-
-    const onScanSuccess = (decodedText, decodedResult) => {
-        // Handle the scanned code
-        console.log(`Code matched = ${decodedText}`, decodedResult);
-        barcodeInput.value = decodedText; // Populate the input field
-        stopScanner();
-    };
-
-    const onScanFailure = (error) => {
-        // This callback is called frequently, so we typically ignore it unless debugging.
-        // console.warn(`Code scan error = ${error}`);
-    };
-
-    const startScanner = () => {
-        if (!html5QrCode) {
-            html5QrCode = new Html5Qrcode("reader");
+    barcodeInput.addEventListener('blur', () => {
+        const barcode = barcodeInput.value.trim();
+        if (barcode) {
+            const existingProduct = products.find(p => p.barcode === barcode);
+            if (existingProduct) {
+                productNameInput.value = existingProduct.name;
+            }
         }
-        scannerModal.classList.remove('hidden');
-        html5QrCode.start(
-            { facingMode: "environment" }, // Use the rear camera
-            {
-                fps: 10,    // Optional, frame per seconds for qr code scanning
-                qrbox: { width: 250, height: 250 }  // Optional, scan box size
-            },
-            onScanSuccess,
-            onScanFailure
-        ).catch(err => {
-            console.error("Failed to start scanner", err);
-            showNotification("Could not start camera. Please ensure you have a camera and have granted permission.", "Camera Error");
-            scannerModal.classList.add('hidden');
-        });
-    };
-
-    const stopScanner = () => {
-        if (html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().then(() => {
-                console.log("QR Code scanning stopped.");
-            }).catch(err => {
-                console.error("Failed to stop scanner.", err);
-            });
-        }
-        scannerModal.classList.add('hidden');
-    };
+    });
 
     productForm.addEventListener('submit', (event) => {
         event.preventDefault();
@@ -544,11 +505,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Scanner button listeners
-    scanBarcodeBtn.addEventListener('click', startScanner);
-    scannerModal.querySelector('.close-button').addEventListener('click', stopScanner);
-    scannerCloseBtn.addEventListener('click', stopScanner);
-
     clearAllBtn.addEventListener('click', () => {
         confirmClearModal.classList.remove('hidden');
     });
@@ -741,7 +697,6 @@ document.addEventListener('DOMContentLoaded', () => {
             settingsModal.classList.add('hidden');
             editProductModal.classList.add('hidden');
             notificationModal.classList.add('hidden');
-            if (!scannerModal.classList.contains('hidden')) stopScanner();
         }
     });
 });

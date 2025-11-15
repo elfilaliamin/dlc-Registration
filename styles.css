@@ -167,19 +167,6 @@ input[type="date"]:focus {
     box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.3);
 }
 
-.input-with-button {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.input-with-button input {
-    flex-grow: 1;
-}
-.input-with-button .icon-btn {
-    margin-top: 0; /* Override default button margin */
-}
-
 button {
     padding: 12px;
     background-color: var(--primary-color);
@@ -604,11 +591,4 @@ textarea#import-textarea:focus {
     position: absolute;
     top: 10px;
     right: 10px;
-}
-
-#reader {
-    width: 100%;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    overflow: hidden; /* Ensures the video stream respects the border-radius */
 }
