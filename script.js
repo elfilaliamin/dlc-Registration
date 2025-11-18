@@ -75,6 +75,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationActions = document.getElementById('notification-actions');
 
     let products = [];
+    let externalProducts = []; // To store products from products.json
+
+    /**
+     * Fetches product data from the external JSON file.
+     */
+    const loadExternalProducts = async () => {
+        try {
+            const response = await fetch('products.json');
+            externalProducts = await response.json();
+        } catch (error) {
+            console.error('Error fetching or parsing products.json:', error);
+        }
+    };
 
     /**
      * Migrates data from the old format (flat array) to the new format (grouped by barcode).
@@ -294,15 +307,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners ---
 
-    barcodeInput.addEventListener('blur', () => {
+    barcodeInput.addEventListener('blur', async () => {
         const barcode = barcodeInput.value.trim();
         if (barcode) {
-            const existingProduct = products.find(p => p.barcode === barcode);
-            if (existingProduct) {
-                productNameInput.value = existingProduct.name;
+            // First, check if the product is already in the user's local list
+            const localProduct = products.find(p => p.barcode === barcode);
+            if (localProduct) {
+                productNameInput.value = localProduct.name;
+                return; // Found in local data, no need to check external
+            }
+
+            // If not found locally, check the external products.json
+            const externalProduct = externalProducts.find(p => p.IBN === barcode);
+            if (externalProduct) {
+                productNameInput.value = externalProduct.Title;
             }
         }
-    });
+    });    
 
     productForm.addEventListener('submit', (event) => {
         event.preventDefault();
@@ -693,6 +714,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Initial Load ---
+    loadExternalProducts(); // Load data from products.json
     migrateData(); // Migrate data if necessary
     renderProducts(); // Initial render
 });
