@@ -192,6 +192,43 @@
   window.firebaseApp = initializeApp(firebaseConfig);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-<script>const productsUrl = 'https://api.npoint.io/05241132532833256655';</script>
+<script>
+    // This script block implements the autofill functionality.
+    document.addEventListener('DOMContentLoaded', () => {
+        const productsUrl = 'https://raw.githubusercontent.com/elfilaliamin/dlc-Registration/refs/heads/main/products.json';
+        let products = [];
+
+        // 1. Fetch product data when the application starts
+        fetch(productsUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                products = data;
+                console.log('Products data for autofill loaded successfully!');
+                initializeAutofill();
+            })
+            .catch(error => {
+                console.error('Error fetching product data for autofill:', error);
+            });
+
+        function initializeAutofill() {
+            const ibnInput = document.getElementById('barcode-value');
+            const productNameInput = document.getElementById('product-name');
+
+            // 2. Listen for input on the IBN field
+            ibnInput.addEventListener('input', (event) => {
+                const ibn = event.target.value;
+                const product = products.find(p => p.IBN === ibn);
+
+                // 3. Update the product name field if a product is found
+                productNameInput.value = product ? product.Title : '';
+            });
+        }
+    });
+</script>
 <script src="script.js" type="module"></script>
 </html>
